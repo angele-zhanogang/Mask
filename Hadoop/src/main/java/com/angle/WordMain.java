@@ -1,5 +1,6 @@
 package com.angle;
 
+import org.apache.commons.io.FileUtils;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.conf.Configured;
 import org.apache.hadoop.fs.Path;
@@ -12,6 +13,8 @@ import org.apache.hadoop.mapreduce.lib.output.TextOutputFormat;
 import org.apache.hadoop.util.Tool;
 import org.apache.hadoop.util.ToolRunner;
 
+import java.io.File;
+
 public class WordMain extends Configured implements Tool{
     public static void main(String[] args) throws Exception {
         Configuration conf = new Configuration();
@@ -20,9 +23,13 @@ public class WordMain extends Configured implements Tool{
     }
 
     public int run(String[] args) throws Exception {
-        String input = "";
-        String output = "";
+        String input = "D:\\data\\words.txt";
+        String output = "D:\\data\\output20210202";
 
+        File file = new File(output);
+        if(file.isDirectory()) {
+            FileUtils.deleteDirectory(file);
+        }
         Job job = Job.getInstance(super.getConf(), "wordCount");
 
         job.setJarByClass(WordMain.class);
