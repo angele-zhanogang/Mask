@@ -1,0 +1,52 @@
+<?xml version="1.0"?>
+<?xml-stylesheet type="text/xsl" href="configuration.xsl"?>
+<!--
+  Licensed under the Apache License, Version 2.0 (the "License");
+  you may not use this file except in compliance with the License.
+  You may obtain a copy of the License at
+
+    http://www.apache.org/licenses/LICENSE-2.0
+
+  Unless required by applicable law or agreed to in writing, software
+  distributed under the License is distributed on an "AS IS" BASIS,
+  WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+  See the License for the specific language governing permissions and
+  limitations under the License. See accompanying LICENSE file.
+-->
+
+<!-- Put site-specific property overrides in this file. -->
+
+<configuration>
+<property>
+        <name>mapreduce.framework.name</name>
+        <value>yarn</value>
+ </property>
+<property>
+	<name>mapreduce.job.ubertask.enable</name>
+	<value>true</value>
+</property>
+<property>
+	<name>mapreduce.jobhistory.address</name>
+	<value>hadoop:10020</value>
+</property>
+<property>
+	<name>mapreduce.jobhistory.webapp.address</name>
+	<value>hadoop:19888</value>
+</property>
+	<property>
+		<name>yarn.application.classpath</name>
+		<value>
+			/export/servers/hadoop-2.8.5/etc/*,
+			/export/servers/hadoop-2.8.5/etc/hadoop/*,
+			/export/servers/hadoop-2.8.5/lib/*,
+			/export/servers/hadoop-2.8.5/share/hadoop/common/*,
+			/export/servers/hadoop-2.8.5/share/hadoop/common/lib/*,
+			/export/servers/hadoop-2.8.5/share/hadoop/mapreduce/*,
+			/export/servers/hadoop-2.8.5/share/hadoop/mapreduce/lib/*,
+			/export/servers/hadoop-2.8.5/share/hadoop/hdfs/*,
+			/export/servers/hadoop-2.8.5/share/hadoop/hdfs/lib/*,
+			/export/servers/hadoop-2.8.5/share/hadoop/yarn/*,
+			/export/servers/hadoop-2.8.5/share/hadoop/yarn/lib/*
+		</value>
+	</property>
+</configuration>
