@@ -13,7 +13,7 @@
 
         <!-- Assume test is the database name -->
         <property name="hibernate.connection.url">
-            jdbc:mysql://hadoop:25336/channel
+            jdbc:mysql://hadoop:25336/channel?characterEncoding=utf-8&amp;useSSL=false
         </property>
         <property name="hibernate.connection.username">
             channel

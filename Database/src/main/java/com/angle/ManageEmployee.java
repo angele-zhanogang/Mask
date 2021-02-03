@@ -33,7 +33,7 @@ public class ManageEmployee {
         me.deleteEmployee(e2);
         me.listEmployees();
         System.out.println("--------drop table employee----------");
-        me.dropTable();
+//        me.dropTable();
         me.listEmployees();
 
         factory.close();
