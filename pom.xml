@@ -11,6 +11,7 @@
     <modules>
         <module>Hadoop</module>
         <module>Database</module>
+        <module>ES</module>
     </modules>
 
 
