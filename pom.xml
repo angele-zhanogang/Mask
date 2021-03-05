@@ -13,6 +13,7 @@
         <module>Database</module>
         <module>ES</module>
         <module>solr</module>
+        <module>streaming-offset-to-zk</module>
     </modules>
 
     <build>
