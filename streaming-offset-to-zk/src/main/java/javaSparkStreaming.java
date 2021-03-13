@@ -4,6 +4,9 @@ import kafka.message.MessageAndMetadata;
 import kafka.serializer.StringDecoder;
 import kafka.utils.ZKStringSerializer$;
 import org.I0Itec.zkclient.ZkClient;
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.FileSystem;
+import org.apache.hadoop.fs.Path;
 import org.apache.log4j.LogManager;
 import org.apache.log4j.Logger;
 import org.apache.spark.SparkConf;
@@ -18,12 +21,13 @@ import org.apache.spark.streaming.api.java.JavaStreamingContext;
 import org.apache.spark.streaming.kafka.KafkaUtils;
 import scala.Tuple2;
 
+import java.io.IOException;
 import java.io.Serializable;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.Map;
 
-public class sds implements Serializable {
+public class javaSparkStreaming implements Serializable {
 
     private static final Logger log = LogManager.getLogger("javaSparkStreaming");
     private final static ZkClient zkClient = new ZkClient(
@@ -32,10 +36,13 @@ public class sds implements Serializable {
             3000,
             ZKStringSerializer$.MODULE$);
 
-    public static void main(String[] args) throws InterruptedException {
-        JavaStreamingContext jsc = new sds().createStreamingContext(true, true);
+    public static void main(String[] args) throws InterruptedException, IOException {
+        String hdfs_path = "";
+        javaSparkStreaming jss = new javaSparkStreaming();
+        JavaStreamingContext jsc = jss.createStreamingContext(true, true);
         jsc.start();
-        jsc.awaitTermination();
+        jss.shutdownForHdfs(jsc,hdfs_path);
+        jsc.awaitTermination();//等待程序终止
     }
 
     /**
@@ -59,13 +66,14 @@ public class sds implements Serializable {
         String readLatest = firstReadLatest ? OffsetRequest.LargestTimeString() : OffsetRequest.SmallestTimeString();
         params.put("auto.offset.reset", readLatest);
 
-
+        //创建zk_path: create /sparkStreaming ""  | create /sparkStreaming/20171128 ""
         final String zkPath = "/sparkStreaming/20171128";
         String topic = "dc_test";
 
         JavaStreamingContext jsc = new JavaStreamingContext(conf, Durations.seconds(10));
-        manager manager = new manager();
-        Map<TopicAndPartition, Long> readOffsets = manager.readOffsets(zkClient, zkPath, topic);
+        OffsetManager offsetManager = new OffsetManager();
+        Map<TopicAndPartition, Long> readOffsets = offsetManager.readOffsets(zkClient, zkPath, topic);
+
         if (readOffsets == null) {
             JavaPairInputDStream<String, String> largestKafkaStream = createLargestKafkaStream(jsc, params, topic);
             largestKafkaStream.foreachRDD(new VoidFunction<JavaPairRDD<String, String>>() {
@@ -77,8 +85,9 @@ public class sds implements Serializable {
                             return tp._2;
                         }
                     });
-                    tmp.foreachPartition(new ActionFunction());
-//                    new manager().saveOffSets(zkClient,zkPath,rdd);
+
+                    tmp.foreachPartition(new ActionFunction());//todo:ActionFunction实现具体的业务操作
+                    new OffsetManager().saveOffSets(zkClient,zkPath,null,rdd);
 
                 }
             });
@@ -88,13 +97,11 @@ public class sds implements Serializable {
                 @Override
                 public void call(JavaRDD<String> rdd) throws Exception {
                     rdd.foreachPartition(new ActionFunction());
-//                    new OffsetManager().saveOffSets(zkClient,zkPath,rdd);
+                    new OffsetManager().saveOffSets(zkClient,zkPath,rdd,null);
                 }
             });
 
         }
-
-
         return jsc;
     }
 
@@ -138,7 +145,6 @@ public class sds implements Serializable {
             HashMap<String, String> params,
             Map<TopicAndPartition, Long> readOffsets) {
         log.info("系统从zk中读取到偏移量，从上次的偏移量开始消费.....");
-
         return KafkaUtils.createDirectStream(
                 jsc,
                 String.class,
@@ -155,5 +161,39 @@ public class sds implements Serializable {
                     }
                 }
         );
+    }
+
+    /**
+     * 根据hdfs存在的标识目录来关闭流
+     * @param jsc -javasparkstreaming对象
+     * @param hdfs_path  -hdfs上的标识目录
+     * @throws InterruptedException
+     * @throws IOException
+     */
+    private void shutdownForHdfs(JavaStreamingContext jsc,String hdfs_path) throws InterruptedException, IOException {
+        Long intervalMills = 10*1000L;
+        boolean isStop = false;
+        while (!isStop){
+            isStop = jsc.awaitTerminationOrTimeout(intervalMills);
+            boolean markFile = isExistsMarkFile(hdfs_path);
+            if(!isStop && markFile){
+                Thread.sleep(2000);
+                log.warn("2秒后系统开始关闭！！");
+                jsc.stop(true,true);
+            }
+        }
+    }
+
+    /**
+     * 判断hdfs上是否存在标识目录，存在返回true
+     * @param hdfs_path -标识目录
+     * @return -true or false
+     * @throws IOException
+     */
+    private boolean isExistsMarkFile(String hdfs_path) throws IOException {
+        Configuration conf = new Configuration();
+        conf.set("fs.defaultFS","hdfs://apache1:8020");
+        FileSystem fs = FileSystem.get(conf);
+        return fs.exists(new Path(hdfs_path));
     }
 }

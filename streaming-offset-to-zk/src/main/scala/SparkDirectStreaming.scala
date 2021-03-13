@@ -17,6 +17,9 @@ import org.apache.spark.streaming.{Seconds, StreamingContext}
 import org.spark_project.jetty.server.{Request, Server}
 import org.spark_project.jetty.server.handler.{AbstractHandler, ContextHandler}
 
+/**
+  * Created by QinDongLiang on 2017/11/28.
+  */
 object SparkDirectStreaming {
 
 
@@ -41,11 +44,13 @@ object SparkDirectStreaming {
 
 
 
-    var kafkaParams: Map[String, String] =Map[String,String]("bootstrap.servers"-> "192.168.10.6:9092,192.168.10.7:9092,192.168.10.8:9092")//创建一个kafkaParams
+//    var kafkaParams: Map[String, String] =Map[String,String]("bootstrap.servers"-> "192.168.10.6:9092,192.168.10.7:9092,192.168.10.8:9092")//创建一个kafkaParams
+    var kafkaParams: Map[String, String] =Map[String,String]("bootstrap.servers"-> "192.168.72.161:9092,192.168.72.162:9092,192.168.72.163:9092")//创建一个kafkaParams
     if (firstReadLastest)   kafkaParams += ("auto.offset.reset"-> OffsetRequest.LargestTimeString)//从最新的开始消费
     //创建zkClient注意最后一个参数最好是ZKStringSerializer类型的，不然写进去zk里面的偏移量是乱码
-    val  zkClient= new ZkClient("192.168.10.6:2181,192.168.10.7:2181,192.168.10.8:2181", 30000, 30000,ZKStringSerializer)
-    val zkOffsetPath="/sparkstreaming/20171128"//zk的路径
+//    val  zkClient= new ZkClient("192.168.10.6:2181,192.168.10.7:2181,192.168.10.8:2181", 30000, 30000,ZKStringSerializer)
+    val  zkClient= new ZkClient("192.168.72.161:2181,192.168.72.162:2181,192.168.72.163:2181", 30000, 30000,ZKStringSerializer)
+    val zkOffsetPath="/sparkStreaming/20171128"//zk的路径
     val topicsSet: Set[String] ="dc_test".split(",").toSet//topic名字
 
     val ssc=new StreamingContext(sparkConf,Seconds(10))//创建StreamingContext,每隔多少秒一个批次
@@ -97,8 +102,8 @@ object SparkDirectStreaming {
     */
   def daemonHttpServer(port:Int,ssc: StreamingContext): Unit ={
     val server=new Server(port)
-    val context = new ContextHandler();
-    context.setContextPath( "/close" );
+    val context = new ContextHandler()
+    context.setContextPath( "/close" )
     context.setHandler( new CloseStreamHandler(ssc) )
     server.setHandler(context)
     server.start()
@@ -111,11 +116,11 @@ object SparkDirectStreaming {
     override def handle(s: String, baseRequest: Request, req: HttpServletRequest, response: HttpServletResponse): Unit ={
       log.warn("开始关闭......")
       ssc.stop(true,true)//优雅的关闭
-      response.setContentType("text/html; charset=utf-8");
-      response.setStatus(HttpServletResponse.SC_OK);
-      val out: PrintWriter = response.getWriter();
-      out.println("close success");
-      baseRequest.setHandled(true);
+      response.setContentType("text/html; charset=utf-8")
+      response.setStatus(HttpServletResponse.SC_OK)
+      val out: PrintWriter = response.getWriter()
+      out.println("close success")
+      baseRequest.setHandled(true)
       log.warn("关闭成功.....")
     }
   }
@@ -147,8 +152,9 @@ object SparkDirectStreaming {
       */
     def isExistsMarkFile(hdfs_file_path:String):Boolean={
       val conf = new Configuration()
+      conf.set("fs.defaultFS","hdfs://apache1:8020")
       val path=new Path(hdfs_file_path)
-      val fs =path.getFileSystem(conf);
+      val fs =path.getFileSystem(conf)
       fs.exists(path)
     }
 
@@ -164,10 +170,10 @@ object SparkDirectStreaming {
     ssc.start()
 
     //启动接受停止请求的守护进程
-    daemonHttpServer(5555,ssc)  //方式一通过Http方式优雅的关闭策略
+//    daemonHttpServer(5555,ssc)  //方式一通过Http方式优雅的关闭策略
 
 
-    //stopByMarkFile(ssc)       //方式二通过扫描HDFS文件来优雅的关闭
+    stopByMarkFile(ssc)       //方式二通过扫描HDFS文件来优雅的关闭
 
 
     //等待任务终止
@@ -193,8 +199,6 @@ object SparkDirectStreaming {
     //目前仅支持一个topic的偏移量处理，读取zk里面偏移量字符串
     val zkOffsetData: Option[Map[TopicAndPartition, Long]] =KafkaOffsetManager.readOffsets(zkClient,zkOffsetPath,topics.last)
 
-
-//    val value: Map[TopicAndPartition, Long] = zkOffsetData.get
     val kafkaStream: InputDStream[(String, String)] = zkOffsetData match {
       case None =>  //如果从zk里面没有读到偏移量，就说明是系统第一次启动
         log.info("系统第一次启动，没有读取到偏移量，默认就最新的offset开始消费")
