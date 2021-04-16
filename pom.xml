@@ -15,6 +15,7 @@
         <module>solr</module>
         <module>streaming-offset-to-zk</module>
         <module>IO</module>
+        <module>Netty</module>
     </modules>
 
     <build>
